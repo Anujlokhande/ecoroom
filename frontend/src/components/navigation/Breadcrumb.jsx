@@ -81,7 +81,7 @@ export default function Breadcrumb({ branches = [] }) {
 
         {dropdownOpen && (
           <div className="absolute right-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
-            <div className="max-h-64 overflow-y-auto">
+            <div className="max-h-64 overflow-y-auto hide-scrollbar">
               <button
                 onClick={() => {
                   jumpTo(0); // Jump back to main

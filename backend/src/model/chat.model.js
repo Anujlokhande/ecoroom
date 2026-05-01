@@ -23,6 +23,14 @@ const messageSchema = new mongoose.Schema(
       ref: "Chat",
       default: null,
     },
+    isTimeCapsule:{
+      type: Boolean,
+      default: false,
+    },
+    revealedAt:{
+      type: Date,
+      default: null,
+    }
   },
   { timestamps: true },
 );

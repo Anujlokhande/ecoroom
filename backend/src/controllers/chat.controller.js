@@ -11,9 +11,23 @@ export const getMessages = async (req, res) => {
     }
     const messages = await Chat.find({ roomId, branchId })
       .populate("senderId", "username")
-      .sort({ createdAt: 1 });
-
-    res.status(200).json({ messages });
+      .sort({ createdAt: 1 })
+      .lean();
+    
+    await Promise.all(messages.map(async (msg) => {
+      if(msg.isTimeCapsule){
+        const now = new Date();
+        const revealedAt = new Date(msg.revealedAt);
+        if(now < revealedAt){
+          msg.text = "This is a time capsule message";
+        }else{
+          await Chat.findByIdAndUpdate(msg._id, { isTimeCapsule: false });
+          msg.isTimeCapsule = false;
+        }
+      }
+    }));
+    
+    return res.status(200).json({messages});
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ msg: "Error while fetching messages" });

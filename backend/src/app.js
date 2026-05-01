@@ -96,6 +96,8 @@ io.on("connection", (socket) => {
           _id: savedMessage._id,
           createdAt: savedMessage.createdAt,
           branchId: savedMessage.branchId, // ← required for client-side branch filtering
+          isTimeCapsule: savedMessage.isTimeCapsule,
+          revealedAt: savedMessage.revealedAt,
         });
       } catch (error) {
         console.log("Error saving message:", error);
@@ -118,6 +120,74 @@ io.on("connection", (socket) => {
       socket.to(branch.roomId).emit("new-branch", branch);
     }
   });
+
+  //time capsule message
+  socket.on("capsule-msg", async (msg) => {
+    if(!socket.user){
+      console.log("Unauthenticated socket attempted to send a message");
+      return;
+    }
+    if(msg.username && msg.roomId && msg.msg){
+      try{
+        const now = new Date();
+        const releaseDate = new Date(msg.releaseAt);
+        // Compare with start of day if only date is provided, but since now includes time,
+        // let's just do a direct comparison. If releaseDate is midnight, it works.
+        const isStillCapsule = now < releaseDate;
+
+        const savedMessage = await Chat.create({
+          text: msg.msg,
+          senderId: socket.user._id,
+          roomId: msg.roomId,
+          branchId: msg.branchId || "main",
+          isTimeCapsule: isStillCapsule,
+          revealedAt: msg.releaseAt,
+        });
+
+        io.to(msg.roomId).emit("chat-msg", {
+          username: socket.user.username,
+          msg: isStillCapsule ? "This is a time capsule message" : msg.msg,
+          roomId: msg.roomId,
+          _id: savedMessage._id,
+          createdAt: savedMessage.createdAt,
+          branchId: savedMessage.branchId,
+          isTimeCapsule: isStillCapsule,          
+          revealedAt: savedMessage.revealedAt,    
+        });
+      }catch(error){
+        console.log("Error saving message:", error);
+      }
+    }
+  })
+
+  socket.on("reveal-time-capsule",async(data)=>{
+    if(!socket.user){
+      console.log("Unauthenticated socket attempted to reveal a message");
+      return;
+    }
+    if(data.roomId && data.messageId){
+      try{
+        const message = await Chat.findById(data.messageId);
+        if(!message){
+          console.log("Message not found");
+          return;
+        }
+        message.isTimeCapsule = false;
+        await message.save();
+        io.to(data.roomId).emit("reveal-time-capsule",{
+          username:socket.user.username,
+          msg:message.text,
+          roomId:data.roomId,
+          _id:message._id,
+          createdAt:message.createdAt,
+          branchId:message.branchId,
+          revealedAt:message.revealedAt,
+        })
+      }catch(error){
+        console.log("Error revealing message:", error);
+      }
+    }
+  })
 });
 
 //import routes
