@@ -6,6 +6,8 @@ import { Server } from "socket.io";
 import { User } from "./model/user.model.js";
 import { Chat } from "./model/chat.model.js";
 import jwt from "jsonwebtoken";
+import { Memory } from "./model/memory.model.js";
+import { memoryChipGenerator } from "./genai/memory.chip.js";
 
 const app = express();
 
@@ -89,6 +91,8 @@ io.on("connection", (socket) => {
           roomId: msg.roomId,
           branchId: msg.branchId || "main",
         });
+
+        
         io.to(msg.roomId).emit("chat-msg", {
           username: socket.user.username,
           msg: msg.msg,
@@ -99,6 +103,34 @@ io.on("connection", (socket) => {
           isTimeCapsule: savedMessage.isTimeCapsule,
           revealedAt: savedMessage.revealedAt,
         });
+
+        //memory chip generator
+        const messageCount = await Chat.countDocuments({ roomId: msg.roomId, branchId: msg.branchId || "main" });
+        
+        if(messageCount && messageCount % 50 == 0){
+          try{
+            const rawMessages = await Chat.find({ roomId : msg.roomId, branchId: msg.branchId || "main" }).sort({createdAt: -1}).limit(50).populate("senderId", "username");
+            const messages = rawMessages.map(msg => ({
+                  text: msg.text,
+                  username: msg.senderId?.username,
+                  createdAt: msg.createdAt
+            }));
+            const memory = await memoryChipGenerator(messages);
+            console.log(memory);
+            
+            // Resolve branchId: "main" is a string and cannot be cast to ObjectId. Use null instead.
+            // const targetBranchId = (!msg.branchId || msg.branchId === "main") ? null : msg.branchId;
+
+            const createdMemory = await Memory.create({
+              roomId: msg.roomId,
+              branchId: msg.branchId,
+              ...memory
+            });
+            io.to(msg.roomId).emit("memory-chips", createdMemory);
+          }catch(error){
+            console.log("Error generating memory chip:", error);
+          }
+        }
       } catch (error) {
         console.log("Error saving message:", error);
       }
@@ -114,6 +146,7 @@ io.on("connection", (socket) => {
     console.log(roomId);
     io.emit("create-room", "created group");
   });
+
   socket.on("new-branch", (branch) => {
     // Broadcast the new branch to everyone else in the room
     if (branch && branch.roomId) {
@@ -123,12 +156,12 @@ io.on("connection", (socket) => {
 
   //time capsule message
   socket.on("capsule-msg", async (msg) => {
-    if(!socket.user){
+    if (!socket.user) {
       console.log("Unauthenticated socket attempted to send a message");
       return;
     }
-    if(msg.username && msg.roomId && msg.msg){
-      try{
+    if (msg.username && msg.roomId && msg.msg) {
+      try {
         const now = new Date();
         const releaseDate = new Date(msg.releaseAt);
         // Compare with start of day if only date is provided, but since now includes time,
@@ -151,43 +184,43 @@ io.on("connection", (socket) => {
           _id: savedMessage._id,
           createdAt: savedMessage.createdAt,
           branchId: savedMessage.branchId,
-          isTimeCapsule: isStillCapsule,          
-          revealedAt: savedMessage.revealedAt,    
+          isTimeCapsule: isStillCapsule,
+          revealedAt: savedMessage.revealedAt,
         });
-      }catch(error){
+      } catch (error) {
         console.log("Error saving message:", error);
       }
     }
-  })
+  });
 
-  socket.on("reveal-time-capsule",async(data)=>{
-    if(!socket.user){
+  socket.on("reveal-time-capsule", async (data) => {
+    if (!socket.user) {
       console.log("Unauthenticated socket attempted to reveal a message");
       return;
     }
-    if(data.roomId && data.messageId){
-      try{
+    if (data.roomId && data.messageId) {
+      try {
         const message = await Chat.findById(data.messageId);
-        if(!message){
+        if (!message) {
           console.log("Message not found");
           return;
         }
         message.isTimeCapsule = false;
         await message.save();
-        io.to(data.roomId).emit("reveal-time-capsule",{
-          username:socket.user.username,
-          msg:message.text,
-          roomId:data.roomId,
-          _id:message._id,
-          createdAt:message.createdAt,
-          branchId:message.branchId,
-          revealedAt:message.revealedAt,
-        })
-      }catch(error){
+        io.to(data.roomId).emit("reveal-time-capsule", {
+          username: socket.user.username,
+          msg: message.text,
+          roomId: data.roomId,
+          _id: message._id,
+          createdAt: message.createdAt,
+          branchId: message.branchId,
+          revealedAt: message.revealedAt,
+        });
+      } catch (error) {
         console.log("Error revealing message:", error);
       }
     }
-  })
+  });
 });
 
 //import routes
@@ -195,12 +228,14 @@ import userRoute from "./routes/user.route.js";
 import chatRoute from "./routes/chat.routes.js";
 import roomRoute from "./routes/room.route.js";
 import branchRoute from "./routes/branch.route.js";
+import memoryRoute from "./routes/memory.route.js";
 
 //routes
 app.use("/api/v1", userRoute);
 app.use("/api/v1/chats", chatRoute);
 app.use("/api/v1/rooms", roomRoute);
 app.use("/api/v1/branch", branchRoute);
+app.use("/api/v1/memory", memoryRoute);
 
 app.get("/", (req, res) => {
   res.status(200).send("hello");

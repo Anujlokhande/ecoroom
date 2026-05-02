@@ -8,8 +8,6 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
       req.cookies?.accessToken ||
       req.header("Authorization")?.replace("Bearer ", "");
 
-    // console.log(token);
-
     if (!token) {
       const err = new Error("Unauthorized access");
       err.statusCode = 401;

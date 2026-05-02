@@ -7,7 +7,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import format from "date-fns/format";
 
-export default function MessageInput({ selectedRoomId }) {
+export default function MessageInput({ selectedRoomId}) {
   const [message, setMessage] = useState("");
   const [date, setDate] = useState(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
