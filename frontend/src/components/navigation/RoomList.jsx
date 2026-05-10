@@ -16,7 +16,6 @@ export default function RoomList({ selectedRoomId, setSelectedRoomId }) {
           withCredentials: true,
         },
       );
-      console.log(res);
       setRooms(res.data.rooms);
       // Set first room as selected if none selected
       if (res.data.rooms.length > 0 && !selectedRoomId) {

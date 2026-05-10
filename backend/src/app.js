@@ -71,10 +71,20 @@ io.on("connection", (socket) => {
   const username = socket.user?.username || "Guest";
   console.log("Socket: ", socket.id, "User:", username);
 
-  socket.on("join-room", ({ roomId, username }) => {
+  socket.on("join-room", async ({ roomId, username }) => {
     socket.join(roomId);
+    socket.data.username = username;
+    socket.data.roomId = roomId;
     console.log(username, " has joined the room");
-    io.to(roomId).emit("room-notice", username);
+    
+    // Broadcast to other users in the room
+    socket.to(roomId).emit("member-joined", username);
+
+    // Get all online members in the room and send to the user who just joined
+    const sockets = await io.in(roomId).fetchSockets();
+    const members = sockets.map((s) => s.data?.username || s.user?.username).filter(Boolean);
+    const uniqueMembers = [...new Set(members)];
+    socket.emit("active-members", uniqueMembers);
   });
 
   socket.on("chat-msg", async (msg) => {
@@ -117,10 +127,6 @@ io.on("connection", (socket) => {
             }));
             const memory = await memoryChipGenerator(messages);
             console.log(memory);
-            
-            // Resolve branchId: "main" is a string and cannot be cast to ObjectId. Use null instead.
-            // const targetBranchId = (!msg.branchId || msg.branchId === "main") ? null : msg.branchId;
-
             const createdMemory = await Memory.create({
               roomId: msg.roomId,
               branchId: msg.branchId,
@@ -140,11 +146,33 @@ io.on("connection", (socket) => {
   socket.on("leave-room", ({ roomId, username }) => {
     socket.leave(roomId);
     console.log(`${username} left room: ${roomId}`);
+    io.in(roomId).emit("member-left", username);
   });
 
   socket.on("create-room", (roomId) => {
     console.log(roomId);
     io.emit("create-room", "created group");
+  });
+
+  socket.on("get-members", (roomId)=>{
+    const members = io.in(roomId).fetchSockets();
+    console.log(members);
+  });
+
+  socket.on("disconnect", async () => {
+    const roomId = socket.data?.roomId;
+    const username = socket.data?.username || socket.user?.username;
+
+    if (roomId && username) {
+      // Check if user still has other active sockets in this room (e.g. another tab)
+      const sockets = await io.in(roomId).fetchSockets();
+      const stillInRoom = sockets.some((s) => (s.data?.username || s.user?.username) === username);
+      
+      if (!stillInRoom) {
+        console.log(`${username} disconnected from room: ${roomId}`);
+        io.in(roomId).emit("member-left", username);
+      }
+    }
   });
 
   socket.on("new-branch", (branch) => {

@@ -20,7 +20,6 @@ export default function Register() {
         { email, password, username },
         { withCredentials: true },
       );
-      console.log(response);
       login(response.data.user);
       navigate("/chat");
     } catch (error) {

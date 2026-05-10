@@ -34,7 +34,7 @@ export default function Login() {
         },
       );
 
-      console.log(response.data);
+      
       login(response.data.user);
       // Assuming success, navigate to chat
       navigate("/chat");

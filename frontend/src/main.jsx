@@ -4,12 +4,15 @@ import "./index.css";
 import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { BranchProvider } from "./context/BranchContext.jsx";
+import { ActiveMembersProvider } from "./context/ActiveMembersContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <AuthProvider>
       <BranchProvider>
-        <App />
+        <ActiveMembersProvider>
+          <App />
+        </ActiveMembersProvider>
       </BranchProvider>
     </AuthProvider>
   </BrowserRouter>,

@@ -210,7 +210,6 @@ export default function MemoryList({memoryChips}) {
   //     importance_score: 9,
   //   },
   // ];
-  console.log(memoryChips);
 
   return (
     <div className="p-5 flex-1 flex flex-col overflow-hidden">

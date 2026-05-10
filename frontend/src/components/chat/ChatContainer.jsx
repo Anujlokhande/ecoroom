@@ -6,11 +6,13 @@ import { AuthContext } from "../../context/AuthContext";
 import Breadcrumbs from "../navigation/Breadcrumb";
 import { useBranch } from "../../context/BranchContext";
 import axios from "axios";
+import { ActiveMembersContext } from "../../context/ActiveMembersContext";
 
 export default function ChatContainer({ selectedRoomId}) {
   const { user } = useContext(AuthContext);
   const { resetToMain } = useBranch();
   const [branches, setBranches] = useState([]);
+  const { members, setMembers } = useContext(ActiveMembersContext);
 
   // Fetch the branch list for the current room
   useEffect(() => {
@@ -41,6 +43,18 @@ export default function ChatContainer({ selectedRoomId}) {
       username: user.username,
     });
 
+    const handleMemberJoin = (username) => {
+      if(members.includes(username)) return;
+      setMembers((prev) => [...prev, username]);
+    };
+
+    const handleActiveMembers = (activeMembers) => {
+      setMembers(activeMembers);
+    };
+
+    socket.on("member-joined", handleMemberJoin);
+    socket.on("active-members", handleActiveMembers);
+
     const handleNewBranch = (newBranch) => {
       setBranches((prev) => {
         // Prevent duplicate branch entries if we get it twice
@@ -49,16 +63,26 @@ export default function ChatContainer({ selectedRoomId}) {
       });
     };
 
+    const handleMemberLeave = (username) => {
+      setMembers((prev) => prev.filter((member) => member !== username));
+    };
+
     socket.on("new-branch", handleNewBranch);
+    socket.on("member-left", handleMemberLeave);
 
     return () => {
       socket.off("new-branch", handleNewBranch);
+      socket.off("member-joined", handleMemberJoin);
+      socket.off("active-members", handleActiveMembers);
+      socket.off("member-left", handleMemberLeave);
       socket.emit("leave-room", {
         roomId: selectedRoomId,
         username: user.username,
       });
     };
   }, [selectedRoomId, user]);
+
+  console.log("from chat container", members);
 
   return (
     <>
