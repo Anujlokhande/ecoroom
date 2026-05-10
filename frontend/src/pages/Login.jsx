@@ -9,13 +9,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login } = useContext(AuthContext);
-  //   const [error, setError] = useState([]);
-
-  //   const validateValues = () => {
-  //     if (!email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
-  //       setError([...email, "Invalid Email"]);
-  //     }
-  //   };
+  const [error, setError] = useState(null);
 
   const navigate = useNavigate();
 
@@ -40,7 +34,7 @@ export default function Login() {
       navigate("/chat");
     } catch (error) {
       console.error("Login error:", error.response?.data || error.message);
-      // Optionally set an error state to display to user
+      setError(error.response?.data?.message || "An error occurred during login.");
     }
 
     setEmail("");
@@ -58,6 +52,12 @@ export default function Login() {
             Sign in to join the conversation
           </p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-3 bg-red-900/50 border border-red-500/50 rounded-lg text-red-200 text-sm text-center">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="space-y-1">

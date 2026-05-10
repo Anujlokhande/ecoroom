@@ -77,14 +77,30 @@ io.on("connection", (socket) => {
     socket.data.roomId = roomId;
     console.log(username, " has joined the room");
     
+    socket.data.status = socket.data.status || "Relaxed";
+    
     // Broadcast to other users in the room
-    socket.to(roomId).emit("member-joined", username);
+    socket.to(roomId).emit("member-joined", { 
+      username, 
+      avatar: socket.user?.avatar,
+      status: socket.data.status 
+    });
 
     // Get all online members in the room and send to the user who just joined
     const sockets = await io.in(roomId).fetchSockets();
-    const members = sockets.map((s) => s.data?.username || s.user?.username).filter(Boolean);
-    const uniqueMembers = [...new Set(members)];
-    socket.emit("active-members", uniqueMembers);
+    const memberMap = new Map();
+    sockets.forEach(s => {
+      const uname = s.data?.username || s.user?.username;
+      const uavatar = s.data?.avatar || s.user?.avatar;
+      if (uname && !memberMap.has(uname)) {
+        memberMap.set(uname, { 
+          username: uname, 
+          avatar: uavatar,
+          status: s.data?.status || "Relaxed" 
+        });
+      }
+    });
+    socket.emit("active-members", Array.from(memberMap.values()));
   });
 
   socket.on("chat-msg", async (msg) => {
@@ -105,6 +121,7 @@ io.on("connection", (socket) => {
         
         io.to(msg.roomId).emit("chat-msg", {
           username: socket.user.username,
+          avatar: socket.user.avatar,
           msg: msg.msg,
           roomId: msg.roomId,
           _id: savedMessage._id,
@@ -182,6 +199,12 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("update-status", ({ roomId, status }) => {
+    socket.data.status = status;
+    const username = socket.data?.username || socket.user?.username;
+    io.in(roomId).emit("status-updated", { username, status });
+  });
+
   //time capsule message
   socket.on("capsule-msg", async (msg) => {
     if (!socket.user) {
@@ -207,6 +230,7 @@ io.on("connection", (socket) => {
 
         io.to(msg.roomId).emit("chat-msg", {
           username: socket.user.username,
+          avatar: socket.user.avatar,
           msg: isStillCapsule ? "This is a time capsule message" : msg.msg,
           roomId: msg.roomId,
           _id: savedMessage._id,
@@ -237,6 +261,7 @@ io.on("connection", (socket) => {
         await message.save();
         io.to(data.roomId).emit("reveal-time-capsule", {
           username: socket.user.username,
+          avatar: socket.user.avatar,
           msg: message.text,
           roomId: data.roomId,
           _id: message._id,

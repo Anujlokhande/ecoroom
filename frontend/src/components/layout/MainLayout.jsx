@@ -70,7 +70,7 @@ export default function MainLayout() {
 
       {/* Right Sidebar - 20% */}
       <div className="w-[20%] h-full border-l border-gray-800 bg-black/20 flex flex-col">
-        <SidebarRight memoryChips={filteredMemoryChips} />
+        <SidebarRight memoryChips={filteredMemoryChips} selectedRoomId={selectedRoomId} />
       </div>
     </div>
   );

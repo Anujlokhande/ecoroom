@@ -1,5 +1,6 @@
 import { User } from "../model/user.model.js";
 import jwt from "jsonwebtoken";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -38,10 +39,22 @@ export const registerUser = async (req, res) => {
       });
     }
 
+    let avatarLocalPath;
+    if (req.file && req.file.path) {
+      avatarLocalPath = req.file.path;
+    }
+
+    let avatar = "";
+    if (avatarLocalPath) {
+      const avatarObj = await uploadOnCloudinary(avatarLocalPath);
+      avatar = avatarObj?.url || "";
+    }
+
     const user = await User.create({
       email,
       username,
       password,
+      avatar,
     });
 
     const createdUser = await User.findById(user._id).select(
@@ -145,7 +158,7 @@ export const logoutUser = async (req, res) => {
       {
         $unset: { refreshToken: 1 },
       },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     const options = {

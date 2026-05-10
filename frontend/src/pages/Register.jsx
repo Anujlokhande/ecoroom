@@ -11,19 +11,34 @@ export default function Register() {
   const [avatar, setAvatar] = useState(null);
   const [username, setUsername] = useState("");
   const { login } = useContext(AuthContext);
+  const [error, setError] = useState(null);
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("username", username);
+      formData.append("password", password);
+      if (avatar) {
+        formData.append("avatar", avatar);
+      }
+
       const response = await axios.post(
         `${import.meta.env.VITE_PUBLIC_BACKEND_URL}/api/v1/register`,
-        { email, password, username },
-        { withCredentials: true },
+        formData,
+        { 
+          withCredentials: true,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
       );
       login(response.data.user);
       navigate("/chat");
     } catch (error) {
       console.error("Register error:", error.response?.data || error.message);
+      setError(error.response?.data?.message || "An error occurred during registration.");
     }
   };
 
@@ -38,6 +53,12 @@ export default function Register() {
             Create an account to get started
           </p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-3 bg-red-900/50 border border-red-500/50 rounded-lg text-red-200 text-sm text-center">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleRegister} className="space-y-5">
           <div className="space-y-1">

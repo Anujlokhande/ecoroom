@@ -43,9 +43,11 @@ export default function ChatContainer({ selectedRoomId}) {
       username: user.username,
     });
 
-    const handleMemberJoin = (username) => {
-      if(members.includes(username)) return;
-      setMembers((prev) => [...prev, username]);
+    const handleMemberJoin = (memberObj) => {
+      setMembers((prev) => {
+        if(prev.some(m => m.username === memberObj.username)) return prev;
+        return [...prev, memberObj];
+      });
     };
 
     const handleActiveMembers = (activeMembers) => {
@@ -64,25 +66,29 @@ export default function ChatContainer({ selectedRoomId}) {
     };
 
     const handleMemberLeave = (username) => {
-      setMembers((prev) => prev.filter((member) => member !== username));
+      setMembers((prev) => prev.filter((member) => member.username !== username));
+    };
+
+    const handleStatusUpdated = ({ username, status }) => {
+      setMembers((prev) => prev.map(m => m.username === username ? { ...m, status } : m));
     };
 
     socket.on("new-branch", handleNewBranch);
     socket.on("member-left", handleMemberLeave);
+    socket.on("status-updated", handleStatusUpdated);
 
     return () => {
       socket.off("new-branch", handleNewBranch);
       socket.off("member-joined", handleMemberJoin);
       socket.off("active-members", handleActiveMembers);
       socket.off("member-left", handleMemberLeave);
+      socket.off("status-updated", handleStatusUpdated);
       socket.emit("leave-room", {
         roomId: selectedRoomId,
         username: user.username,
       });
     };
   }, [selectedRoomId, user]);
-
-  console.log("from chat container", members);
 
   return (
     <>

@@ -55,6 +55,7 @@ export default function MessageList({ selectedRoomId, branches, setBranches }) {
 
     const fetchMessages = async () => {
       try {
+        setLoading(true);
         const res = await axios.get(
           `${import.meta.env.VITE_PUBLIC_BACKEND_URL}/api/v1/chats/${selectedRoomId}`,
           {
@@ -68,6 +69,7 @@ export default function MessageList({ selectedRoomId, branches, setBranches }) {
         const transformed = fetchedMessages.map((m) => ({
           _id: m._id,
           username: m.senderId.username,
+          avatar: m.senderId.avatar,
           msg: m.text,
           createdAt: m.createdAt,
           branchId: m.branchId,
@@ -85,6 +87,8 @@ export default function MessageList({ selectedRoomId, branches, setBranches }) {
       } catch (error) {
         console.log("Error fetching messages:", error.message);
         setMessages([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -116,6 +120,7 @@ export default function MessageList({ selectedRoomId, branches, setBranches }) {
       const newMsg = {
         _id: msg._id,
         username: msg.username,
+        avatar: msg.avatar,
         msg: msg.msg,
         createdAt: msg.createdAt || new Date(),
         branchId: msg.branchId || "main",
@@ -164,7 +169,17 @@ export default function MessageList({ selectedRoomId, branches, setBranches }) {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5 scroll-smooth hide-scrollbar">
-      {messages.length === 0 && (
+      {loading && messages.length === 0 && (
+        Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className={`flex gap-3 items-end ${i % 2 === 0 ? "justify-start" : "justify-end"} animate-pulse`}>
+            {i % 2 === 0 && <div className="w-8 h-8 rounded-full bg-gray-800 shrink-0" />}
+            <div className={`px-4 py-4 rounded-2xl w-48 ${i % 2 === 0 ? "bg-gray-800 rounded-bl-sm" : "bg-emerald-600/50 rounded-br-sm"}`} />
+            {i % 2 !== 0 && <div className="w-8 h-8 rounded-full bg-emerald-600/50 shrink-0" />}
+          </div>
+        ))
+      )}
+
+      {!loading && messages.length === 0 && (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-center ">
           <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-2xl">
             {currentBranch.id === "main" ? "💬" : "⎇"}
@@ -190,9 +205,13 @@ export default function MessageList({ selectedRoomId, branches, setBranches }) {
             }`}
           >
             {!isOwnMessage && (
-              <div className="w-8 h-8 rounded-full bg-gray-700 shrink-0 flex items-center justify-center text-xs font-semibold text-gray-300">
-                {msg.username?.[0]?.toUpperCase()}
-              </div>
+              msg.avatar ? (
+                <img src={msg.avatar} alt="avatar" className="w-8 h-8 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gray-700 shrink-0 flex items-center justify-center text-xs font-semibold text-gray-300 uppercase">
+                  {msg.username?.[0]}
+                </div>
+              )
             )}
 
             {/* 🔥 LEFT badge for own messages */}
@@ -256,9 +275,13 @@ export default function MessageList({ selectedRoomId, branches, setBranches }) {
             )}
 
             {isOwnMessage && (
-              <div className="w-8 h-8 rounded-full bg-emerald-600 shrink-0 flex items-center justify-center text-xs font-semibold text-white">
-                {user?.username?.[0]?.toUpperCase()}
-              </div>
+              user?.avatar ? (
+                <img src={user.avatar} alt="avatar" className="w-8 h-8 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-emerald-600 shrink-0 flex items-center justify-center text-xs font-semibold text-white uppercase">
+                  {user?.username?.[0]}
+                </div>
+              )
             )}
           </div>
         );

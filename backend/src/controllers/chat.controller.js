@@ -10,7 +10,7 @@ export const getMessages = async (req, res) => {
       return res.status(404).json({ msg: "Room Id not found" });
     }
     const messages = await Chat.find({ roomId, branchId })
-      .populate("senderId", "username")
+      .populate("senderId", "username avatar")
       .sort({ createdAt: 1 })
       .lean();
     

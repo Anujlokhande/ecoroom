@@ -29,8 +29,21 @@ export const AuthProvider = ({ children }) => {
     setUser(user);
   };
 
+  const logout = async () => {
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_PUBLIC_BACKEND_URL}/api/v1/logout`,
+        {},
+        { withCredentials: true }
+      );
+      setUser(null);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
